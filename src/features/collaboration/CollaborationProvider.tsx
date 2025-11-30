@@ -18,7 +18,7 @@ interface CollaborationContextValue {
   awareness: Awareness | null;
   isConnected: boolean;
   roomId: string | null;
-  joinRoom: (roomId: string, userName: string) => void;
+  joinRoom: (roomId: string, userName: string, seedLocalContent?: boolean) => void;
   leaveRoom: () => void;
   createRoom: (userName: string) => string;
 }
@@ -48,6 +48,29 @@ function generateRoomId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+function getDefaultWsUrl(): string {
+  // Highest priority: explicit env override
+  const envUrl = import.meta.env.VITE_COLLAB_WS_URL as string | undefined;
+  if (envUrl) return envUrl;
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+
+    // Prefer explicit env port if provided
+    const envPort = import.meta.env.VITE_COLLAB_WS_PORT as string | undefined;
+    const targetPort = envPort
+      ? envPort
+      : hostname === 'localhost' || hostname === '127.0.0.1'
+        ? '1234'
+        : port;
+
+    return `${wsProtocol}//${hostname}${targetPort ? `:${targetPort}` : ''}`;
+  }
+
+  return 'ws://localhost:1234';
+}
+
 interface CollaborationProviderProps {
   children: ReactNode;
   wsUrl?: string;
@@ -55,7 +78,7 @@ interface CollaborationProviderProps {
 
 export const CollaborationProvider: FC<CollaborationProviderProps> = ({
   children,
-  wsUrl = 'ws://localhost:1234',
+  wsUrl = getDefaultWsUrl(),
 }) => {
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -67,11 +90,13 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
 
   const setConnectionStatus = useStore((state) => state.setConnectionStatus);
   const updateCollaborator = useStore((state) => state.updateCollaborator);
+  const removeCollaborator = useStore((state) => state.removeCollaborator);
   const clearCollaborators = useStore((state) => state.clearCollaborators);
   const setContent = useStore((state) => state.setContent);
+  const getContent = useStore.getState;
 
   const joinRoom = useCallback(
-    (newRoomId: string, userName: string) => {
+    (newRoomId: string, userName: string, seedLocalContent = false) => {
       // Clean up existing connection
       provider?.destroy();
       persistence?.destroy();
@@ -82,6 +107,14 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       // Create new document
       const doc = new Y.Doc();
       const text = doc.getText('markdown');
+
+      // 仅在明确要求时种子本地内容（首个创建者）。避免重复加入同一房间时内容叠加。
+      if (seedLocalContent) {
+        const currentContent = getContent().editor.content;
+        if (!text.length && currentContent) {
+          text.insert(0, currentContent);
+        }
+      }
 
       // Local persistence
       const localPersistence = new IndexeddbPersistence(newRoomId, doc);
@@ -101,24 +134,40 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
         const connected = status === 'connected';
         setIsConnected(connected);
         setConnectionStatus(connected ? 'connected' : 'disconnected');
+        if (!connected) {
+          clearCollaborators();
+        }
       });
 
-      // Listen for awareness changes (other users)
-      wsProvider.awareness.on('change', () => {
-        const states = wsProvider.awareness.getStates();
-        states.forEach((state, clientId) => {
-          if (clientId !== wsProvider.awareness.clientID && state.user) {
-            updateCollaborator({
-              id: clientId.toString(),
-              name: state.user.name,
-              color: state.user.color,
-              cursor: state.cursor || null,
-              selection: state.selection || null,
-              isActive: true,
-            });
-          }
-        });
-      });
+      // Listen for awareness updates (joins, updates, leaves)
+      wsProvider.awareness.on(
+        'update',
+        ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
+          const states = wsProvider.awareness.getStates();
+
+          // handle added/updated
+          [...added, ...updated].forEach((clientId) => {
+            const state = states.get(clientId);
+            if (clientId !== wsProvider.awareness.clientID && state?.user) {
+              updateCollaborator({
+                id: clientId.toString(),
+                name: state.user.name,
+                color: state.user.color,
+                cursor: state.cursor || null,
+                selection: state.selection || null,
+                isActive: true,
+              });
+            }
+          });
+
+          // handle removed
+          removed.forEach((clientId) => {
+            if (clientId !== wsProvider.awareness.clientID) {
+              removeCollaborator(clientId.toString());
+            }
+          });
+        }
+      );
 
       // Sync text changes to store
       text.observe(() => {
@@ -137,6 +186,7 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       wsUrl,
       setConnectionStatus,
       updateCollaborator,
+      clearCollaborators,
       setContent,
     ]
   );
@@ -163,7 +213,7 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
   const createRoom = useCallback(
     (userName: string): string => {
       const newRoomId = generateRoomId();
-      joinRoom(newRoomId, userName);
+      joinRoom(newRoomId, userName, true);
       return newRoomId;
     },
     [joinRoom]

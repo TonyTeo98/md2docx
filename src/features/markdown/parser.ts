@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { extractMath, restoreMath } from './extensions/mathExtension';
 
 // Configure marked options
@@ -17,14 +18,16 @@ export function parseMarkdown(markdown: string): string {
   // Step 3: Restore math expressions with KaTeX rendering
   const result = restoreMath(html, store);
 
-  return result;
+  // Step 4: Sanitize to prevent XSS
+  return DOMPurify.sanitize(result, { USE_PROFILES: { html: true } });
 }
 
 export function parseMarkdownAsync(markdown: string): Promise<string> {
   return new Promise((resolve) => {
     const { text: textWithPlaceholders, store } = extractMath(markdown);
     marked.parse(textWithPlaceholders, { async: true }).then((html) => {
-      resolve(restoreMath(html, store));
+      const restored = restoreMath(html, store);
+      resolve(DOMPurify.sanitize(restored, { USE_PROFILES: { html: true } }));
     });
   });
 }

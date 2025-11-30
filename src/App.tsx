@@ -58,6 +58,8 @@ $$
 Enjoy using md2docx!
 `;
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
 function getDefaultFileName(fileName: string | null, content: string): string {
   // If we have a loaded file name, use it without extension
   if (fileName) {
@@ -91,6 +93,24 @@ function AppContent() {
 
   const [isExportDialogOpen, setExportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const copyWithFallback = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback for older browsers / denied permissions
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return success;
+    }
+  }, []);
 
   const handleExportClick = useCallback(() => {
     if (!content.trim()) {
@@ -128,12 +148,12 @@ function AppContent() {
 
     try {
       const html = parseMarkdown(content);
-      await navigator.clipboard.writeText(html);
-      showToast(t('toast.htmlCopied'), 'success');
+      const ok = await copyWithFallback(html);
+      showToast(ok ? t('toast.htmlCopied') : t('toast.copyFailed'), ok ? 'success' : 'warning');
     } catch (error) {
       showToast(t('toast.copyFailed'), 'error');
     }
-  }, [content, showToast, t]);
+  }, [content, copyWithFallback, showToast, t]);
 
   const handleClear = useCallback(() => {
     setContent('');
@@ -149,11 +169,19 @@ function AppContent() {
 
   const handleImport = useCallback(
     (file: File) => {
+      if (file.size > MAX_FILE_SIZE) {
+        showToast(`File exceeds ${MAX_FILE_SIZE / (1024 * 1024)}MB`, 'warning');
+        return;
+      }
       if (
         !file.name.endsWith('.md') &&
         !file.name.endsWith('.markdown') &&
         !file.name.endsWith('.txt')
       ) {
+        showToast(t('import.invalidType'), 'warning');
+        return;
+      }
+      if (file.type && !['text/markdown', 'text/plain', ''].includes(file.type)) {
         showToast(t('import.invalidType'), 'warning');
         return;
       }

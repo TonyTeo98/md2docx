@@ -218,7 +218,10 @@ export class DocxGenerator {
     });
   }
 
-  private parseInlineTokens(tokens: MarkdownToken[]): TextRun[] {
+  private parseInlineTokens(
+    tokens: MarkdownToken[],
+    extra: Record<string, unknown> = {}
+  ): TextRun[] {
     const runs: TextRun[] = [];
 
     for (const token of tokens) {
@@ -229,6 +232,7 @@ export class DocxGenerator {
               text: token.text || token.raw || '',
               font: this.options.defaultFont,
               size: this.options.defaultFontSize,
+              ...extra,
             })
           );
           break;
@@ -240,6 +244,7 @@ export class DocxGenerator {
               bold: true,
               font: this.options.defaultFont,
               size: this.options.defaultFontSize,
+              ...extra,
             })
           );
           break;
@@ -251,6 +256,7 @@ export class DocxGenerator {
               italics: true,
               font: this.options.defaultFont,
               size: this.options.defaultFontSize,
+              ...extra,
             })
           );
           break;
@@ -262,6 +268,7 @@ export class DocxGenerator {
               font: 'Courier New',
               size: this.options.defaultFontSize - 2,
               shading: { fill: 'f4f4f4' },
+              ...extra,
             })
           );
           break;
@@ -274,6 +281,7 @@ export class DocxGenerator {
               underline: {},
               font: this.options.defaultFont,
               size: this.options.defaultFontSize,
+              ...extra,
             })
           );
           break;
@@ -285,6 +293,7 @@ export class DocxGenerator {
                 text: token.text,
                 font: this.options.defaultFont,
                 size: this.options.defaultFontSize,
+                ...extra,
               })
             );
           }
@@ -296,29 +305,32 @@ export class DocxGenerator {
   }
 
   private createTable(token: MarkdownToken): Table {
-    const headerCells = (token.header || []).map(
-      (cell) =>
-        new TableCell({
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: cell.text || '',
-                  bold: true,
-                  font: this.options.defaultFont,
-                  size: this.options.defaultFontSize,
-                }),
-              ],
-            }),
-          ],
-          shading: { fill: 'f0f0f0' },
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 1 },
-            bottom: { style: BorderStyle.SINGLE, size: 1 },
-            left: { style: BorderStyle.SINGLE, size: 1 },
-            right: { style: BorderStyle.SINGLE, size: 1 },
-          },
-        })
+    const headerCells = (token.header || []).map((cell) =>
+      new TableCell({
+        children: [
+          new Paragraph({
+            children:
+              this.parseInlineTokens(cell.tokens || [], { bold: true }).length >
+              0
+                ? this.parseInlineTokens(cell.tokens || [], { bold: true })
+                : [
+                    new TextRun({
+                      text: cell.text || '',
+                      bold: true,
+                      font: this.options.defaultFont,
+                      size: this.options.defaultFontSize,
+                    }),
+                  ],
+          }),
+        ],
+        shading: { fill: 'f0f0f0' },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1 },
+          bottom: { style: BorderStyle.SINGLE, size: 1 },
+          left: { style: BorderStyle.SINGLE, size: 1 },
+          right: { style: BorderStyle.SINGLE, size: 1 },
+        },
+      })
     );
 
     const headerRow = new TableRow({
@@ -334,13 +346,16 @@ export class DocxGenerator {
               new TableCell({
                 children: [
                   new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: cell.text || '',
-                        font: this.options.defaultFont,
-                        size: this.options.defaultFontSize,
-                      }),
-                    ],
+                    children:
+                      this.parseInlineTokens(cell.tokens || []).length > 0
+                        ? this.parseInlineTokens(cell.tokens || [])
+                        : [
+                            new TextRun({
+                              text: cell.text || '',
+                              font: this.options.defaultFont,
+                              size: this.options.defaultFontSize,
+                            }),
+                          ],
                   }),
                 ],
                 borders: {
@@ -385,14 +400,24 @@ export class DocxGenerator {
 
     items.forEach((item, index) => {
       const bullet = ordered ? `${index + 1}. ` : '• ';
+      const contentRuns = this.parseInlineTokens(item.tokens || []);
       paragraphs.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: bullet + (item.text || ''),
+              text: bullet,
               font: this.options.defaultFont,
               size: this.options.defaultFontSize,
             }),
+            ...(contentRuns.length
+              ? contentRuns
+              : [
+                  new TextRun({
+                    text: item.text || '',
+                    font: this.options.defaultFont,
+                    size: this.options.defaultFontSize,
+                  }),
+                ]),
           ],
           indent: { left: 720 },
           spacing: { after: 60 },

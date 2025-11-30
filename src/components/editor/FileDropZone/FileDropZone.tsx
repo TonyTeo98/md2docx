@@ -7,6 +7,7 @@ interface FileDropZoneProps {
 }
 
 export const FileDropZone: React.FC<FileDropZoneProps> = ({ children }) => {
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
   const [isDragging, setIsDragging] = useState(false);
   const setContent = useStore((state) => state.setContent);
   const setFileName = useStore((state) => state.setFileName);
@@ -46,11 +47,21 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ children }) => {
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         const file = files[0];
-        if (
+
+        if (file.size > MAX_FILE_SIZE) {
+          showToast('File too large (limit 2MB)', 'warning');
+          return;
+        }
+
+        const validExt =
           file.name.endsWith('.md') ||
           file.name.endsWith('.markdown') ||
-          file.name.endsWith('.txt')
-        ) {
+          file.name.endsWith('.txt');
+        const validMime = ['text/markdown', 'text/plain', ''].includes(
+          file.type
+        );
+
+        if (validExt && validMime) {
           const reader = new FileReader();
           reader.onload = (event) => {
             const content = event.target?.result as string;
