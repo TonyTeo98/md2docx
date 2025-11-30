@@ -1,3 +1,21 @@
+# 构建阶段
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# 生产阶段
 FROM node:20-alpine
 
 WORKDIR /app
@@ -5,14 +23,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies only
+RUN npm ci --omit=dev
 
-# Copy source
-COPY . .
-
-# Build TypeScript
-RUN npm run build
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
 
 # Expose port
 EXPOSE 1234
