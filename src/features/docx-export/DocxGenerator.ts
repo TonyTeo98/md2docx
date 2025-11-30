@@ -40,6 +40,14 @@ interface MarkdownToken {
   ordered?: boolean;
 }
 
+/** Style options for inline text runs */
+interface TextRunStyleOptions {
+  bold?: boolean;
+  italics?: boolean;
+  underline?: Record<string, unknown>;
+  color?: string;
+}
+
 export class DocxGenerator {
   private options: Required<DocxGeneratorOptions>;
 
@@ -220,7 +228,7 @@ export class DocxGenerator {
 
   private parseInlineTokens(
     tokens: MarkdownToken[],
-    extra: Record<string, unknown> = {}
+    extra: TextRunStyleOptions = {}
   ): TextRun[] {
     const runs: TextRun[] = [];
 

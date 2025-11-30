@@ -1,7 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { markdown } from '@codemirror/lang-markdown';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -28,17 +28,37 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
   const { yText, awareness, isConnected } = useCollaboration();
   const undoManagerRef = useRef<Y.UndoManager | null>(null);
 
-  useEffect(() => {
-    if (!editorRef.current) return;
+  // Use compartments for dynamic reconfiguration without full rebuild
+  const themeCompartment = useRef(new Compartment());
+  const fontSizeCompartment = useRef(new Compartment());
+  const collabCompartment = useRef(new Compartment());
 
-    const extensions = [
+  // Track previous collaboration state to detect changes
+  const prevCollabRef = useRef<{ isConnected: boolean; yText: Y.Text | null }>({
+    isConnected: false,
+    yText: null,
+  });
+
+  // Memoize base extensions that don't change
+  const baseExtensions = useMemo(
+    () => [
       basicSetup,
       markdown(),
       keymap.of([...defaultKeymap, indentWithTab]),
+      EditorView.contentAttributes.of({
+        'aria-label': 'Markdown editor',
+      }),
+    ],
+    []
+  );
+
+  // Create font size theme
+  const createFontSizeTheme = useCallback(
+    (size: number) =>
       EditorView.theme({
         '&': {
           height: '100%',
-          fontSize: `${editorFontSize}px`,
+          fontSize: `${size}px`,
         },
         '.cm-scroller': {
           overflow: 'auto',
@@ -56,30 +76,39 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
           backgroundColor: 'var(--border)',
         },
       }),
-      EditorView.contentAttributes.of({
-        'aria-label': 'Markdown editor',
-      }),
+    []
+  );
+
+  // Create collaboration extension
+  const createCollabExtension = useCallback(
+    (connected: boolean, text: Y.Text | null, aw: typeof awareness) => {
+      if (connected && text && aw) {
+        undoManagerRef.current = new Y.UndoManager(text);
+        return yCollab(text, aw, { undoManager: undoManagerRef.current });
+      }
+      // Local mode: sync to store
+      return EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          const newContent = update.state.doc.toString();
+          setContent(newContent);
+        }
+      });
+    },
+    [setContent]
+  );
+
+  // Initialize editor once
+  useEffect(() => {
+    if (!editorRef.current || viewRef.current) return;
+
+    const extensions = [
+      ...baseExtensions,
+      fontSizeCompartment.current.of(createFontSizeTheme(editorFontSize)),
+      themeCompartment.current.of(theme === 'dark' ? oneDark : []),
+      collabCompartment.current.of(
+        createCollabExtension(isConnected, yText, awareness)
+      ),
     ];
-
-    if (isConnected && yText && awareness) {
-      // yjs 协同插件
-      undoManagerRef.current = new Y.UndoManager(yText);
-      extensions.push(yCollab(yText, awareness, { undoManager: undoManagerRef.current }));
-    } else {
-      // 本地单机模式，用 updateListener 写入 store
-      extensions.push(
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            const newContent = update.state.doc.toString();
-            setContent(newContent);
-          }
-        })
-      );
-    }
-
-    if (theme === 'dark') {
-      extensions.push(oneDark);
-    }
 
     const state = EditorState.create({
       doc: isConnected && yText ? yText.toString() : content,
@@ -91,11 +120,81 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
       parent: editorRef.current,
     });
 
+    prevCollabRef.current = { isConnected, yText };
+
     return () => {
       viewRef.current?.destroy();
       viewRef.current = null;
     };
-  }, [theme, editorFontSize, isConnected, yText]);
+    // Only run on mount - we handle updates via compartments
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update theme dynamically
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: themeCompartment.current.reconfigure(
+        theme === 'dark' ? oneDark : []
+      ),
+    });
+  }, [theme]);
+
+  // Update font size dynamically
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: fontSizeCompartment.current.reconfigure(
+        createFontSizeTheme(editorFontSize)
+      ),
+    });
+  }, [editorFontSize, createFontSizeTheme]);
+
+  // Handle collaboration state changes - requires full rebuild
+  useEffect(() => {
+    const prev = prevCollabRef.current;
+    const collabChanged =
+      prev.isConnected !== isConnected || prev.yText !== yText;
+
+    if (!collabChanged || !viewRef.current) return;
+
+    // Collaboration state changed - need to rebuild editor
+    const parent = editorRef.current;
+    if (!parent) return;
+
+    viewRef.current.destroy();
+
+    const extensions = [
+      ...baseExtensions,
+      fontSizeCompartment.current.of(createFontSizeTheme(editorFontSize)),
+      themeCompartment.current.of(theme === 'dark' ? oneDark : []),
+      collabCompartment.current.of(
+        createCollabExtension(isConnected, yText, awareness)
+      ),
+    ];
+
+    const state = EditorState.create({
+      doc: isConnected && yText ? yText.toString() : content,
+      extensions,
+    });
+
+    viewRef.current = new EditorView({
+      state,
+      parent,
+    });
+
+    prevCollabRef.current = { isConnected, yText };
+  }, [
+    isConnected,
+    yText,
+    awareness,
+    baseExtensions,
+    createFontSizeTheme,
+    createCollabExtension,
+    editorFontSize,
+    theme,
+    content,
+  ]);
 
   useEffect(() => {
     if (!viewRef.current) return;

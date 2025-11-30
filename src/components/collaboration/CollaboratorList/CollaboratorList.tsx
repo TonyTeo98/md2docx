@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore, useCollaborators, useConnectionStatus } from '../../../store';
 import { useCollaboration } from '../../../features/collaboration';
+import { copyToClipboard } from '../../../utils';
 import { Button } from '../../common/Button';
 import styles from './CollaboratorList.module.css';
 
@@ -16,23 +17,6 @@ export const CollaboratorList: React.FC = () => {
   const { roomId, joinRoom, leaveRoom, createRoom, isConnected } =
     useCollaboration();
 
-  const copyText = async (id: string) => {
-    try {
-      await navigator.clipboard.writeText(id);
-      return true;
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = id;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return ok;
-    }
-  };
-
   if (!isOpen) return null;
 
   const handleCreateRoom = async () => {
@@ -44,7 +28,7 @@ export const CollaboratorList: React.FC = () => {
     setRoomInput(newRoomId);
     setRecentRoomId(newRoomId);
 
-    const copied = await copyText(newRoomId);
+    const copied = await copyToClipboard(newRoomId);
     showToast(
       copied
         ? `Room created: ${newRoomId} (copied)`
@@ -73,7 +57,7 @@ export const CollaboratorList: React.FC = () => {
   const copyRoomId = async (idToCopy?: string) => {
     const id = idToCopy ?? roomId ?? undefined;
     if (id) {
-      const ok = await copyText(id);
+      const ok = await copyToClipboard(id);
       showToast(ok ? 'Room ID copied!' : 'Copy failed', ok ? 'success' : 'warning');
     }
   };

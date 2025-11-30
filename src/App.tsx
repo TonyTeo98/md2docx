@@ -13,6 +13,7 @@ import { Toast } from './components/common/Toast';
 import { ExportDialog } from './components/common/ExportDialog';
 import { CollaboratorList } from './components/collaboration/CollaboratorList';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { copyToClipboard, MAX_FILE_SIZE, hasValidExtension, hasValidMimeType } from './utils';
 import { saveAs } from 'file-saver';
 import './styles/globals.css';
 import styles from './App.module.css';
@@ -58,8 +59,6 @@ $$
 Enjoy using md2docx!
 `;
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
 function getDefaultFileName(fileName: string | null, content: string): string {
   // If we have a loaded file name, use it without extension
   if (fileName) {
@@ -93,24 +92,6 @@ function AppContent() {
 
   const [isExportDialogOpen, setExportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const copyWithFallback = useCallback(async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fallback for older browsers / denied permissions
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const success = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return success;
-    }
-  }, []);
 
   const handleExportClick = useCallback(() => {
     if (!content.trim()) {
@@ -148,12 +129,15 @@ function AppContent() {
 
     try {
       const html = parseMarkdown(content);
-      const ok = await copyWithFallback(html);
+      const ok = await copyToClipboard(html);
       showToast(ok ? t('toast.htmlCopied') : t('toast.copyFailed'), ok ? 'success' : 'warning');
     } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Copy HTML failed:', error);
+      }
       showToast(t('toast.copyFailed'), 'error');
     }
-  }, [content, copyWithFallback, showToast, t]);
+  }, [content, showToast, t]);
 
   const handleClear = useCallback(() => {
     setContent('');
@@ -173,15 +157,11 @@ function AppContent() {
         showToast(`File exceeds ${MAX_FILE_SIZE / (1024 * 1024)}MB`, 'warning');
         return;
       }
-      if (
-        !file.name.endsWith('.md') &&
-        !file.name.endsWith('.markdown') &&
-        !file.name.endsWith('.txt')
-      ) {
+      if (!hasValidExtension(file.name)) {
         showToast(t('import.invalidType'), 'warning');
         return;
       }
-      if (file.type && !['text/markdown', 'text/plain', ''].includes(file.type)) {
+      if (file.type && !hasValidMimeType(file.type)) {
         showToast(t('import.invalidType'), 'warning');
         return;
       }
@@ -194,6 +174,9 @@ function AppContent() {
         showToast(t('import.success', { name: file.name }), 'success');
       };
       reader.onerror = () => {
+        if (import.meta.env.DEV) {
+          console.error('File read error:', reader.error);
+        }
         showToast(t('import.failed'), 'error');
       };
       reader.readAsText(file);

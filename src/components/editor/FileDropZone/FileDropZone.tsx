@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useStore } from '../../../store';
+import { MAX_FILE_SIZE, hasValidExtension, hasValidMimeType } from '../../../utils';
 import styles from './FileDropZone.module.css';
 
 interface FileDropZoneProps {
@@ -7,7 +8,6 @@ interface FileDropZoneProps {
 }
 
 export const FileDropZone: React.FC<FileDropZoneProps> = ({ children }) => {
-  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
   const [isDragging, setIsDragging] = useState(false);
   const setContent = useStore((state) => state.setContent);
   const setFileName = useStore((state) => state.setFileName);
@@ -49,17 +49,12 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ children }) => {
         const file = files[0];
 
         if (file.size > MAX_FILE_SIZE) {
-          showToast('File too large (limit 2MB)', 'warning');
+          showToast(`File too large (limit ${MAX_FILE_SIZE / (1024 * 1024)}MB)`, 'warning');
           return;
         }
 
-        const validExt =
-          file.name.endsWith('.md') ||
-          file.name.endsWith('.markdown') ||
-          file.name.endsWith('.txt');
-        const validMime = ['text/markdown', 'text/plain', ''].includes(
-          file.type
-        );
+        const validExt = hasValidExtension(file.name);
+        const validMime = hasValidMimeType(file.type);
 
         if (validExt && validMime) {
           const reader = new FileReader();
@@ -70,6 +65,9 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ children }) => {
             showToast(`Loaded: ${file.name}`, 'success');
           };
           reader.onerror = () => {
+            if (import.meta.env.DEV) {
+              console.error('File read error:', reader.error);
+            }
             showToast('Failed to read file', 'error');
           };
           reader.readAsText(file);
