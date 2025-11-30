@@ -1,0 +1,152 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.container:focus-within {
+  box-shadow: var(--shadow-lg), 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--foreground);
+}
+
+.titleIcon {
+  font-size: 14px;
+}
+
+.charCount {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  padding: 2px 8px;
+  background: var(--background);
+  border-radius: 10px;
+}
+
+.editor {
+  flex: 1;
+  overflow: hidden;
+}
+
+.editor :global(.cm-editor) {
+  height: 100%;
+  font-size: 14px;
+}
+
+.editor :global(.cm-scroller) {
+  overflow: auto;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.6;
+}
+
+.editor :global(.cm-content) {
+  padding: 16px;
+}
+
+.editor :global(.cm-gutters) {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border: none;
+  padding-right: 8px;
+}
+
+.editor :global(.cm-activeLineGutter) {
+  background-color: var(--border);
+}
+
+.editor :global(.cm-activeLine) {
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.editor :global(.cm-selectionBackground) {
+  background-color: rgba(102, 126, 234, 0.2) !important;
+}
+
+.editor :global(.cm-cursor) {
+  border-left-color: var(--primary);
+  border-left-width: 2px;
+}
+
+/* Placeholder */
+.editor :global(.cm-placeholder) {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .container {
+    border-radius: 8px;
+  }
+
+  .header {
+    padding: 8px 12px;
+  }
+
+  .title {
+    font-size: 12px;
+  }
+
+  .charCount {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .editor :global(.cm-content) {
+    padding: 12px;
+  }
+
+  .editor :global(.cm-editor) {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 6px 10px;
+  }
+
+  .titleIcon {
+    font-size: 12px;
+  }
+
+  .editor :global(.cm-content) {
+    padding: 8px;
+  }
+
+  .editor :global(.cm-editor) {
+    font-size: 12px;
+  }
+}

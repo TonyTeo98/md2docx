@@ -1,0 +1,10 @@
+export { zh } from './zh';
+export { en } from './en';
+export { ja } from './ja';
+export { ko } from './ko';
+export { fr } from './fr';
+export { de } from './de';
+export { es } from './es';
+export { pt } from './pt';
+export { ru } from './ru';
+export type { Locale } from './zh';

@@ -1,0 +1,51 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.main {
+  flex: 1;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.editorContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  height: 100%;
+}
+
+.editor,
+.preview {
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .editorContainer {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 8px;
+  }
+
+  .editorContainer {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 6px;
+  }
+
+  .editorContainer {
+    gap: 6px;
+  }
+}

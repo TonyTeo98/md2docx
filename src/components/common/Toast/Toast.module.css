@@ -1,0 +1,77 @@
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.message {
+  font-size: 14px;
+}
+
+.close {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.close:hover {
+  color: var(--foreground);
+}
+
+/* Types */
+.success .icon {
+  background: var(--success);
+  color: white;
+}
+
+.error .icon {
+  background: var(--destructive);
+  color: white;
+}
+
+.warning .icon {
+  background: #f59e0b;
+  color: white;
+}
+
+.info .icon {
+  background: var(--primary);
+  color: white;
+}
