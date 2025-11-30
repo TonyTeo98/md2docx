@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
-import * as Y from 'yjs';
+
+// @ts-ignore - y-websocket doesn't have type declarations
 import { setupWSConnection } from 'y-websocket/bin/utils';
 
 // Load environment variables
@@ -62,7 +63,7 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
     }
   });
 
-  ws.on('error', (error) => {
+  ws.on('error', (error: Error) => {
     console.error(`WebSocket error in room ${roomId}:`, error);
   });
 });
