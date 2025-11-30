@@ -109,4 +109,24 @@ export const ru: Locale = {
     codeBlock: 'Блок кода',
     math: 'Математическая формула',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'Обнаружен конфликт документа',
+    description:
+      'Ваши офлайн-изменения отличаются от удалённой версии. Выберите, как продолжить:',
+    local: 'Локальная',
+    remote: 'Удалённая',
+    localVersion: 'Офлайн-изменения',
+    remoteVersion: 'Текущая удалённая версия',
+    lines: 'строк',
+    linesAdded: 'строк добавлено',
+    linesRemoved: 'строк удалено',
+    downloadLocal: 'Скачать локальную копию',
+    useRemote: 'Использовать удалённую версию',
+    mergeEdit: 'Объединить вручную',
+    downloadSuccess: 'Локальная копия скачана',
+    syncedRemote: 'Синхронизировано с удалённой версией',
+    copyAll: 'Копировать всё',
+  },
 };

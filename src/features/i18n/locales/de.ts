@@ -109,4 +109,24 @@ export const de: Locale = {
     codeBlock: 'Codeblock',
     math: 'Mathematische Formel',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'Dokumentkonflikt erkannt',
+    description:
+      'Ihre Offline-Bearbeitungen unterscheiden sich von der Remote-Version. Bitte wählen Sie, wie Sie fortfahren möchten:',
+    local: 'Lokal',
+    remote: 'Remote',
+    localVersion: 'Offline-Bearbeitungen',
+    remoteVersion: 'Aktuelle Remote-Version',
+    lines: 'Zeilen',
+    linesAdded: 'Zeilen hinzugefügt',
+    linesRemoved: 'Zeilen entfernt',
+    downloadLocal: 'Lokale Kopie herunterladen',
+    useRemote: 'Remote-Version verwenden',
+    mergeEdit: 'Manuell zusammenführen',
+    downloadSuccess: 'Lokale Kopie heruntergeladen',
+    syncedRemote: 'Mit Remote-Version synchronisiert',
+    copyAll: 'Alles kopieren',
+  },
 };

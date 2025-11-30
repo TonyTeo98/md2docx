@@ -109,4 +109,24 @@ export const en: Locale = {
     codeBlock: 'Code Block',
     math: 'Math Formula',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'Document Conflict Detected',
+    description:
+      'Your offline edits differ from the remote version. Please choose how to proceed:',
+    local: 'Local',
+    remote: 'Remote',
+    localVersion: 'Offline Edits',
+    remoteVersion: 'Current Remote',
+    lines: 'lines',
+    linesAdded: 'lines added',
+    linesRemoved: 'lines removed',
+    downloadLocal: 'Download Local Copy',
+    useRemote: 'Use Remote Version',
+    mergeEdit: 'Merge Manually',
+    downloadSuccess: 'Local copy downloaded',
+    syncedRemote: 'Synced to remote version',
+    copyAll: 'Copy All',
+  },
 };

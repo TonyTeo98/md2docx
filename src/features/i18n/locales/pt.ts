@@ -109,4 +109,24 @@ export const pt: Locale = {
     codeBlock: 'Bloco de código',
     math: 'Fórmula matemática',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'Conflito de documento detectado',
+    description:
+      'Suas edições offline diferem da versão remota. Por favor, escolha como proceder:',
+    local: 'Local',
+    remote: 'Remoto',
+    localVersion: 'Edições offline',
+    remoteVersion: 'Versão remota atual',
+    lines: 'linhas',
+    linesAdded: 'linhas adicionadas',
+    linesRemoved: 'linhas removidas',
+    downloadLocal: 'Baixar cópia local',
+    useRemote: 'Usar versão remota',
+    mergeEdit: 'Mesclar manualmente',
+    downloadSuccess: 'Cópia local baixada',
+    syncedRemote: 'Sincronizado com versão remota',
+    copyAll: 'Copiar tudo',
+  },
 };

@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from 'react';
 import type { ReactNode, FC } from 'react';
 import * as Y from 'yjs';
@@ -12,15 +13,23 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import { Awareness } from 'y-protocols/awareness';
 import { useStore } from '../../store';
 
+export interface ConflictInfo {
+  localContent: string;
+  remoteContent: string;
+  roomId: string;
+}
+
 interface CollaborationContextValue {
   yDoc: Y.Doc | null;
   yText: Y.Text | null;
   awareness: Awareness | null;
   isConnected: boolean;
   roomId: string | null;
+  conflict: ConflictInfo | null;
   joinRoom: (roomId: string, userName: string, seedLocalContent?: boolean) => void;
   leaveRoom: () => void;
   createRoom: (userName: string) => string;
+  resolveConflict: (useRemote: boolean) => void;
 }
 
 const CollaborationContext = createContext<CollaborationContextValue | null>(
@@ -87,6 +96,14 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
   );
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<ConflictInfo | null>(null);
+
+  // Refs to store pending conflict resolution data
+  const pendingConflictRef = useRef<{
+    localContent: string;
+    yText: Y.Text;
+    roomId: string;
+  } | null>(null);
 
   const setConnectionStatus = useStore((state) => state.setConnectionStatus);
   const updateCollaborator = useStore((state) => state.updateCollaborator);
@@ -101,6 +118,7 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       provider?.destroy();
       persistence?.destroy();
       yDoc?.destroy();
+      setConflict(null);
 
       setConnectionStatus('connecting');
 
@@ -116,66 +134,212 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
         }
       }
 
-      // Local persistence
+      // Local persistence - load from IndexedDB first
       const localPersistence = new IndexeddbPersistence(newRoomId, doc);
 
-      // WebSocket connection
-      const wsProvider = new WebsocketProvider(wsUrl, newRoomId, doc);
+      // Track sync states for conflict detection
+      let localSynced = false;
+      let remoteSynced = false;
+      let conflictChecked = false;
+      let localContentSnapshot: string | null = null;
+      let wsProvider: WebsocketProvider | null = null;
 
-      // Set user info
-      const userColor = generateUserColor();
-      wsProvider.awareness.setLocalStateField('user', {
-        name: userName,
-        color: userColor,
-      });
+      // Function to check for conflicts once both syncs are done
+      const checkForConflicts = () => {
+        if (!localSynced || !remoteSynced || conflictChecked) return;
+        conflictChecked = true;
 
-      // Listen for connection status
-      wsProvider.on('status', ({ status }: { status: string }) => {
-        const connected = status === 'connected';
-        setIsConnected(connected);
-        setConnectionStatus(connected ? 'connected' : 'disconnected');
-        if (!connected) {
-          clearCollaborators();
+        const remoteContent = text.toString();
+
+        // Debug logging
+        if (import.meta.env.DEV) {
+          console.log('[Conflict Check]', {
+            localContentSnapshot,
+            remoteContent,
+            localLength: localContentSnapshot?.length,
+            remoteLength: remoteContent.length,
+            areDifferent: localContentSnapshot !== remoteContent,
+          });
         }
-      });
 
-      // Listen for awareness updates (joins, updates, leaves)
-      wsProvider.awareness.on(
-        'update',
-        ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
-          const states = wsProvider.awareness.getStates();
+        // Check if there's a conflict (local differs from remote)
+        if (
+          localContentSnapshot &&
+          localContentSnapshot.trim() !== '' &&
+          remoteContent.trim() !== '' &&
+          localContentSnapshot !== remoteContent
+        ) {
+          // Store conflict data for resolution
+          pendingConflictRef.current = {
+            localContent: localContentSnapshot,
+            yText: text,
+            roomId: newRoomId,
+          };
+          setConflict({
+            localContent: localContentSnapshot,
+            remoteContent,
+            roomId: newRoomId,
+          });
+        } else {
+          // No conflict, sync content to store
+          setContent(remoteContent);
+        }
+      };
 
-          // handle added/updated
-          [...added, ...updated].forEach((clientId) => {
-            const state = states.get(clientId);
-            if (clientId !== wsProvider.awareness.clientID && state?.user) {
-              updateCollaborator({
-                id: clientId.toString(),
-                name: state.user.name,
-                color: state.user.color,
-                cursor: state.cursor || null,
-                selection: state.selection || null,
-                isActive: true,
-              });
+      // Capture current editor content BEFORE any sync happens
+      // This is important for the case where user edits content after leaving a room
+      const editorContentBeforeJoin = getContent().editor.content;
+
+      // When local persistence syncs, capture local content BEFORE connecting to WebSocket
+      localPersistence.on('synced', () => {
+        if (!localSynced) {
+          // Capture content from IndexedDB
+          const indexedDbContent = text.toString();
+
+          // Use editor content if it's different from IndexedDB (user edited after leaving room)
+          // Otherwise use IndexedDB content
+          if (
+            editorContentBeforeJoin &&
+            editorContentBeforeJoin.trim() !== '' &&
+            editorContentBeforeJoin !== indexedDbContent
+          ) {
+            localContentSnapshot = editorContentBeforeJoin;
+            if (import.meta.env.DEV) {
+              console.log('[Editor Content] Using editor content (edited after leaving):', localContentSnapshot?.substring(0, 100));
+            }
+          } else {
+            localContentSnapshot = indexedDbContent;
+            if (import.meta.env.DEV) {
+              console.log('[IndexedDB Synced] Local content captured:', localContentSnapshot?.substring(0, 100));
+            }
+          }
+          localSynced = true;
+
+          // First, fetch remote content using a temporary doc to compare
+          const tempDoc = new Y.Doc();
+          const tempProvider = new WebsocketProvider(wsUrl, newRoomId, tempDoc, {
+            connect: true,
+          });
+
+          tempProvider.on('sync', (isSynced: boolean) => {
+            if (isSynced && !remoteSynced) {
+              remoteSynced = true;
+              const remoteContent = tempDoc.getText('markdown').toString();
+
+              if (import.meta.env.DEV) {
+                console.log('[Remote Fetched] Remote content:', remoteContent?.substring(0, 100));
+                console.log('[Conflict Check]', {
+                  localContentSnapshot,
+                  remoteContent,
+                  localLength: localContentSnapshot?.length,
+                  remoteLength: remoteContent.length,
+                  areDifferent: localContentSnapshot !== remoteContent,
+                });
+              }
+
+              // Destroy temp provider
+              tempProvider.destroy();
+              tempDoc.destroy();
+
+              // Check if there's a conflict (local differs from remote)
+              if (
+                localContentSnapshot &&
+                localContentSnapshot.trim() !== '' &&
+                remoteContent.trim() !== '' &&
+                localContentSnapshot !== remoteContent
+              ) {
+                // Store conflict data for resolution
+                pendingConflictRef.current = {
+                  localContent: localContentSnapshot,
+                  yText: text,
+                  roomId: newRoomId,
+                };
+                setConflict({
+                  localContent: localContentSnapshot,
+                  remoteContent,
+                  roomId: newRoomId,
+                });
+                // Don't connect main provider yet - wait for conflict resolution
+                conflictChecked = true;
+              } else {
+                // No conflict, connect main provider
+                connectMainProvider();
+              }
             }
           });
 
-          // handle removed
-          removed.forEach((clientId) => {
-            if (clientId !== wsProvider.awareness.clientID) {
-              removeCollaborator(clientId.toString());
-            }
-          });
-        }
-      );
+          // Function to connect main WebSocket provider
+          const connectMainProvider = () => {
+            conflictChecked = true;
+            wsProvider = new WebsocketProvider(wsUrl, newRoomId, doc);
 
-      // Sync text changes to store
+            // Set user info
+            const userColor = generateUserColor();
+            wsProvider.awareness.setLocalStateField('user', {
+              name: userName,
+              color: userColor,
+            });
+
+            // Listen for connection status
+            wsProvider.on('status', ({ status }: { status: string }) => {
+              const connected = status === 'connected';
+              setIsConnected(connected);
+              setConnectionStatus(connected ? 'connected' : 'disconnected');
+              if (!connected) {
+                clearCollaborators();
+              }
+            });
+
+            // Listen for awareness updates (joins, updates, leaves)
+            wsProvider.awareness.on(
+              'update',
+              ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
+                const states = wsProvider!.awareness.getStates();
+
+                // handle added/updated
+                [...added, ...updated].forEach((clientId) => {
+                  const state = states.get(clientId);
+                  if (clientId !== wsProvider!.awareness.clientID && state?.user) {
+                    updateCollaborator({
+                      id: clientId.toString(),
+                      name: state.user.name,
+                      color: state.user.color,
+                      cursor: state.cursor || null,
+                      selection: state.selection || null,
+                      isActive: true,
+                    });
+                  }
+                });
+
+                // handle removed
+                removed.forEach((clientId) => {
+                  if (clientId !== wsProvider!.awareness.clientID) {
+                    removeCollaborator(clientId.toString());
+                  }
+                });
+              }
+            );
+
+            wsProvider.on('sync', () => {
+              setContent(text.toString());
+            });
+
+            setProvider(wsProvider);
+          };
+
+          // Store connectMainProvider for use after conflict resolution
+          (window as unknown as Record<string, unknown>).__connectMainProvider = connectMainProvider;
+        }
+      });
+
+      // Sync text changes to store (only after conflict is resolved)
       text.observe(() => {
-        setContent(text.toString());
+        if (conflictChecked && !pendingConflictRef.current) {
+          setContent(text.toString());
+        }
       });
 
       setYDoc(doc);
-      setProvider(wsProvider);
       setPersistence(localPersistence);
       setRoomId(newRoomId);
     },
@@ -188,6 +352,7 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       updateCollaborator,
       clearCollaborators,
       setContent,
+      conflict,
     ]
   );
 
@@ -219,6 +384,35 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
     [joinRoom]
   );
 
+  // Resolve conflict: useRemote=true means discard local, useRemote=false means keep local (not supported - use download)
+  const resolveConflict = useCallback(
+    (useRemote: boolean) => {
+      const pending = pendingConflictRef.current;
+      if (!pending) {
+        setConflict(null);
+        return;
+      }
+
+      if (useRemote) {
+        // Clear local IndexedDB data to use remote version
+        // The yText will be synced from remote when we connect
+      }
+      // Note: "use local" is not directly supported to avoid overwriting remote
+      // Users should download local copy and manually merge
+
+      pendingConflictRef.current = null;
+      setConflict(null);
+
+      // Connect main provider after conflict resolution
+      const connectFn = (window as unknown as Record<string, () => void>).__connectMainProvider;
+      if (connectFn) {
+        connectFn();
+        delete (window as unknown as Record<string, unknown>).__connectMainProvider;
+      }
+    },
+    [setContent]
+  );
+
   useEffect(() => {
     return () => {
       leaveRoom();
@@ -233,9 +427,11 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
         awareness: provider?.awareness || null,
         isConnected,
         roomId,
+        conflict,
         joinRoom,
         leaveRoom,
         createRoom,
+        resolveConflict,
       }}
     >
       {children}

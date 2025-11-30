@@ -109,4 +109,24 @@ export const ja: Locale = {
     codeBlock: 'コードブロック',
     math: '数式',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'ドキュメントの競合を検出',
+    description:
+      'オフライン編集内容がリモートバージョンと異なります。処理方法を選択してください：',
+    local: 'ローカル',
+    remote: 'リモート',
+    localVersion: 'オフライン編集版',
+    remoteVersion: '現在のリモート版',
+    lines: '行',
+    linesAdded: '行追加',
+    linesRemoved: '行削除',
+    downloadLocal: 'ローカルコピーをダウンロード',
+    useRemote: 'リモート版を使用',
+    mergeEdit: '手動でマージ',
+    downloadSuccess: 'ローカルコピーをダウンロードしました',
+    syncedRemote: 'リモート版に同期しました',
+    copyAll: 'すべてコピー',
+  },
 };

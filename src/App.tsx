@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef, useMemo } from 'react';
 import { useStore } from './store';
 import { ThemeProvider } from './features/theme';
-import { CollaborationProvider } from './features/collaboration';
+import { CollaborationProvider, useCollaboration } from './features/collaboration';
 import { I18nProvider, useI18n } from './features/i18n';
 import { generateDocx } from './features/docx-export';
 import { parseMarkdown } from './features/markdown';
@@ -11,6 +11,7 @@ import { Toolbar } from './components/editor/Toolbar';
 import { FileDropZone } from './components/editor/FileDropZone';
 import { Toast } from './components/common/Toast';
 import { ExportDialog } from './components/common/ExportDialog';
+import { ConflictDialog } from './components/common/ConflictDialog';
 import { CollaboratorList } from './components/collaboration/CollaboratorList';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { copyToClipboard, MAX_FILE_SIZE, hasValidExtension, hasValidMimeType } from './utils';
@@ -89,8 +90,11 @@ function AppContent() {
   const setFileName = useStore((state) => state.setFileName);
   const showToast = useStore((state) => state.showToast);
   const exportOptions = useStore((state) => state.settings.exportOptions);
+  const { conflict, resolveConflict } = useCollaboration();
 
   const [isExportDialogOpen, setExportDialogOpen] = useState(false);
+  const [isMergeMode, setIsMergeMode] = useState(false);
+  const [mergeLocalContent, setMergeLocalContent] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExportClick = useCallback(() => {
@@ -209,6 +213,33 @@ function AppContent() {
   );
   useKeyboardShortcuts(shortcutHandlers);
 
+  // Conflict resolution handlers
+  const handleDownloadLocal = useCallback(() => {
+    if (!conflict) return;
+    const blob = new Blob([conflict.localContent], { type: 'text/markdown' });
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    saveAs(blob, `local_backup_${timestamp}.md`);
+    showToast(t('conflict.downloadSuccess'), 'success');
+    // After download, use remote version
+    resolveConflict(true);
+    showToast(t('conflict.syncedRemote'), 'info');
+  }, [conflict, resolveConflict, showToast, t]);
+
+  const handleUseRemote = useCallback(() => {
+    resolveConflict(true);
+    showToast(t('conflict.syncedRemote'), 'success');
+  }, [resolveConflict, showToast, t]);
+
+  const handleMergeEdit = useCallback(() => {
+    if (!conflict) return;
+    // Store local content for reference and close dialog
+    setMergeLocalContent(conflict.localContent);
+    setIsMergeMode(true);
+    // Use remote as base, user can manually copy from local
+    resolveConflict(true);
+  }, [conflict, resolveConflict]);
+
   return (
     <FileDropZone>
       {/* Hidden file input for keyboard shortcut */}
@@ -241,6 +272,42 @@ function AppContent() {
           onExport={handleExport}
           defaultFileName={defaultExportName}
         />
+        <ConflictDialog
+          isOpen={!!conflict}
+          conflict={conflict}
+          onUseRemote={handleUseRemote}
+          onDownloadLocal={handleDownloadLocal}
+          onMergeEdit={handleMergeEdit}
+        />
+        {/* Merge mode: show local content reference panel */}
+        {isMergeMode && mergeLocalContent && (
+          <div className={styles.mergePanel}>
+            <div className={styles.mergePanelHeader}>
+              <span>{t('conflict.localVersion')}</span>
+              <div className={styles.mergePanelActions}>
+                <button
+                  className={styles.mergePanelBtn}
+                  onClick={async () => {
+                    await copyToClipboard(mergeLocalContent);
+                    showToast(t('toast.htmlCopied'), 'success');
+                  }}
+                >
+                  📋 {t('conflict.copyAll')}
+                </button>
+                <button
+                  className={styles.mergePanelClose}
+                  onClick={() => {
+                    setIsMergeMode(false);
+                    setMergeLocalContent('');
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <pre className={styles.mergePanelContent}>{mergeLocalContent}</pre>
+          </div>
+        )}
       </div>
     </FileDropZone>
   );

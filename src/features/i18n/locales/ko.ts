@@ -109,4 +109,24 @@ export const ko: Locale = {
     codeBlock: '코드 블록',
     math: '수식',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: '문서 충돌 감지됨',
+    description:
+      '오프라인 편집 내용이 원격 버전과 다릅니다. 처리 방법을 선택해주세요:',
+    local: '로컬',
+    remote: '원격',
+    localVersion: '오프라인 편집본',
+    remoteVersion: '현재 원격 버전',
+    lines: '줄',
+    linesAdded: '줄 추가됨',
+    linesRemoved: '줄 삭제됨',
+    downloadLocal: '로컬 사본 다운로드',
+    useRemote: '원격 버전 사용',
+    mergeEdit: '수동 병합',
+    downloadSuccess: '로컬 사본 다운로드됨',
+    syncedRemote: '원격 버전으로 동기화됨',
+    copyAll: '전체 복사',
+  },
 };

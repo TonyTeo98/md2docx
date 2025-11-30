@@ -107,6 +107,26 @@ export const zh = {
     codeBlock: '代码块',
     math: '数学公式',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: '检测到文档冲突',
+    description:
+      '你在离线期间编辑的内容与远程版本不同。请选择如何处理：',
+    local: '本地',
+    remote: '远程',
+    localVersion: '离线编辑版本',
+    remoteVersion: '当前远程版本',
+    lines: '行',
+    linesAdded: '行新增',
+    linesRemoved: '行删除',
+    downloadLocal: '下载本地副本',
+    useRemote: '使用远程版本',
+    mergeEdit: '手动合并',
+    downloadSuccess: '本地副本已下载',
+    syncedRemote: '已同步远程版本',
+    copyAll: '复制全部',
+  },
 };
 
 export type Locale = typeof zh;

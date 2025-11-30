@@ -109,4 +109,24 @@ export const fr: Locale = {
     codeBlock: 'Bloc de code',
     math: 'Formule mathématique',
   },
+
+  // Conflict resolution
+  conflict: {
+    title: 'Conflit de document détecté',
+    description:
+      'Vos modifications hors ligne diffèrent de la version distante. Veuillez choisir comment procéder :',
+    local: 'Local',
+    remote: 'Distant',
+    localVersion: 'Modifications hors ligne',
+    remoteVersion: 'Version distante actuelle',
+    lines: 'lignes',
+    linesAdded: 'lignes ajoutées',
+    linesRemoved: 'lignes supprimées',
+    downloadLocal: 'Télécharger la copie locale',
+    useRemote: 'Utiliser la version distante',
+    mergeEdit: 'Fusionner manuellement',
+    downloadSuccess: 'Copie locale téléchargée',
+    syncedRemote: 'Synchronisé avec la version distante',
+    copyAll: 'Tout copier',
+  },
 };
