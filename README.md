@@ -1,6 +1,14 @@
 # md2docx
 
+[![License](https://img.shields.io/github/license/TonyTeo98/md2docx)](./LICENSE)
+[![Stars](https://img.shields.io/github/stars/TonyTeo98/md2docx)](https://github.com/TonyTeo98/md2docx/stargazers)
+[![Issues](https://img.shields.io/github/issues/TonyTeo98/md2docx)](https://github.com/TonyTeo98/md2docx/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/TonyTeo98/md2docx)](https://github.com/TonyTeo98/md2docx/commits)
+[![Demo](https://img.shields.io/badge/demo-md2docx.ytz.me-blue)](https://md2docx.ytz.me)
+
 一个现代化的 Markdown 转 Word 文档工具，支持实时预览、代码高亮、数学公式和多人协作。
+
+**[在线演示 Demo](https://md2docx.ytz.me)**
 
 ## 功能特性
 
@@ -98,6 +106,10 @@ md2docx/
 | `Ctrl/Cmd + O` | 导入文件 |
 | `Ctrl/Cmd + Shift + C` | 复制 HTML |
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=TonyTeo98/md2docx&type=Date)](https://star-history.com/#TonyTeo98/md2docx&Date)
+
 ## License
 
-MIT
+[MIT](./LICENSE)

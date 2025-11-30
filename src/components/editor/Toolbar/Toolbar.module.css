@@ -97,6 +97,21 @@
   gap: 8px;
 }
 
+.githubLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  color: var(--muted-foreground);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.githubLink:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
 .collabBtn {
   position: relative;
 }

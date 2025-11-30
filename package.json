@@ -1,8 +1,18 @@
 {
   "name": "md2docx",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Markdown to Word converter with real-time collaboration support",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TonyTeo98/md2docx.git"
+  },
+  "homepage": "https://github.com/TonyTeo98/md2docx",
+  "bugs": {
+    "url": "https://github.com/TonyTeo98/md2docx/issues"
+  },
+  "author": "TonyTeo98",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
