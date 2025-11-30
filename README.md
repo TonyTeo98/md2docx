@@ -18,10 +18,28 @@
 - **代码高亮** - 支持多种编程语言语法高亮
 - **数学公式** - 支持 LaTeX 数学公式 (KaTeX)
 - **多人协作** - 基于 Yjs 的实时协作编辑
+- **冲突解决** - 智能检测离线编辑冲突，提供多种解决方案
 - **多语言** - 支持中、英、日、韩、法、德、西、葡、俄 9 种语言
 - **主题切换** - 浅色/深色主题
-- **文件导入** - 支持拖拽或点击导入 .md 文件
+- **文件导入** - 支持拖拽或点击导入 .md 文件（最大 2MB）
+- **安全性** - HTML 内容经过 DOMPurify 消毒处理
 - **快捷键** - Ctrl+S 导出、Ctrl+O 导入、Ctrl+Shift+C 复制 HTML
+
+## 协作功能
+
+### 实时协作
+
+多人可以同时编辑同一文档，所有更改实时同步。
+
+### 冲突解决
+
+当你离线编辑后重新加入房间时，如果本地内容与远程版本不同，系统会弹出冲突解决对话框：
+
+| 选项 | 说明 |
+|------|------|
+| 下载本地副本 | 将本地编辑保存为 .md 文件，然后同步远程版本 |
+| 使用远程版本 | 放弃本地修改，直接使用远程最新版本 |
+| 手动合并 | 打开参考面板，可以从本地版本复制需要的内容 |
 
 ## 快速开始
 
@@ -33,6 +51,9 @@ npm install
 
 # 启动开发服务器
 npm run dev
+
+# 类型检查
+npx tsc --noEmit
 
 # 构建生产版本
 npm run build
@@ -78,10 +99,11 @@ docker compose up -d
 | 编辑器 | CodeMirror 6 |
 | 状态管理 | Zustand + Immer |
 | 样式 | CSS Modules |
-| 协作 | Yjs + y-websocket |
+| 协作 | Yjs + y-websocket + y-indexeddb |
 | 导出 | docx |
 | 公式 | KaTeX |
 | 高亮 | Prism.js |
+| 安全 | DOMPurify |
 
 ## 目录结构
 
@@ -89,9 +111,18 @@ docker compose up -d
 md2docx/
 ├── src/
 │   ├── components/      # React 组件
+│   │   ├── common/      # 通用组件 (Button, Toast, ConflictDialog...)
+│   │   ├── editor/      # 编辑器组件
+│   │   └── collaboration/ # 协作组件
 │   ├── features/        # 功能模块
-│   ├── store/           # 状态管理
+│   │   ├── collaboration/ # 协作功能 (Yjs, 冲突检测)
+│   │   ├── docx-export/   # Word 导出
+│   │   ├── i18n/          # 国际化 (9 种语言)
+│   │   ├── markdown/      # Markdown 解析
+│   │   └── theme/         # 主题切换
+│   ├── store/           # Zustand 状态管理
 │   ├── hooks/           # 自定义 Hooks
+│   ├── utils/           # 工具函数
 │   └── styles/          # 全局样式
 ├── server/              # 协作服务器
 ├── dist/                # 构建产物
