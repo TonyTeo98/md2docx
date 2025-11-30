@@ -144,48 +144,6 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       let localContentSnapshot: string | null = null;
       let wsProvider: WebsocketProvider | null = null;
 
-      // Function to check for conflicts once both syncs are done
-      const checkForConflicts = () => {
-        if (!localSynced || !remoteSynced || conflictChecked) return;
-        conflictChecked = true;
-
-        const remoteContent = text.toString();
-
-        // Debug logging
-        if (import.meta.env.DEV) {
-          console.log('[Conflict Check]', {
-            localContentSnapshot,
-            remoteContent,
-            localLength: localContentSnapshot?.length,
-            remoteLength: remoteContent.length,
-            areDifferent: localContentSnapshot !== remoteContent,
-          });
-        }
-
-        // Check if there's a conflict (local differs from remote)
-        if (
-          localContentSnapshot &&
-          localContentSnapshot.trim() !== '' &&
-          remoteContent.trim() !== '' &&
-          localContentSnapshot !== remoteContent
-        ) {
-          // Store conflict data for resolution
-          pendingConflictRef.current = {
-            localContent: localContentSnapshot,
-            yText: text,
-            roomId: newRoomId,
-          };
-          setConflict({
-            localContent: localContentSnapshot,
-            remoteContent,
-            roomId: newRoomId,
-          });
-        } else {
-          // No conflict, sync content to store
-          setContent(remoteContent);
-        }
-      };
-
       // Capture current editor content BEFORE any sync happens
       // This is important for the case where user edits content after leaving a room
       const editorContentBeforeJoin = getContent().editor.content;
