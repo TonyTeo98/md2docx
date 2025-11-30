@@ -1,18 +1,31 @@
-version: '3.8'
+# md2docx Docker Compose 配置
+# 使用方式: docker compose up -d
 
 services:
   # 前端应用
   web:
-    build: .
+    image: ghcr.io/tonyteo98/md2docx:main
     ports:
       - "80:80"
     restart: unless-stopped
+    depends_on:
+      - collab
 
-  # 协作服务器 (可选)
+  # 协作服务器
   collab:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: ghcr.io/tonyteo98/md2docx-server:main
     ports:
       - "1234:1234"
     restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - collab-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:1234/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  collab-data:

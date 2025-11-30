@@ -40,16 +40,26 @@ npm run dev
 
 ## 部署
 
-详见 [DEPLOY.md](./DEPLOY.md)
-
-### 快速部署
+### Docker 一键部署（推荐）
 
 ```bash
-# 上传到服务器后
-npm install && npm run build
+# 下载配置文件
+curl -O https://raw.githubusercontent.com/TonyTeo98/md2docx/main/docker-compose.yml
 
-# 配置 Nginx 指向 dist/ 目录即可
+# 启动
+docker compose up -d
 ```
+
+访问 `http://your-server-ip` 即可。
+
+### Docker 镜像
+
+| 镜像 | 说明 |
+|------|------|
+| `ghcr.io/tonyteo98/md2docx:main` | 前端应用 |
+| `ghcr.io/tonyteo98/md2docx-server:main` | 协作服务器 |
+
+更多部署方式详见 [DEPLOY.md](./DEPLOY.md)
 
 ## 技术栈
 
