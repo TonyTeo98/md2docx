@@ -66,15 +66,15 @@ function getDefaultWsUrl(): string {
     const { protocol, hostname, port } = window.location;
     const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
 
-    // Prefer explicit env port if provided
-    const envPort = import.meta.env.VITE_COLLAB_WS_PORT as string | undefined;
-    const targetPort = envPort
-      ? envPort
-      : hostname === 'localhost' || hostname === '127.0.0.1'
-        ? '1234'
-        : port;
+    // 本地开发环境：直接连接 WebSocket 服务器端口 1234
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      const envPort = import.meta.env.VITE_COLLAB_WS_PORT as string | undefined;
+      return `${wsProtocol}//${hostname}:${envPort || '1234'}`;
+    }
 
-    return `${wsProtocol}//${hostname}${targetPort ? `:${targetPort}` : ''}`;
+    // 生产环境：通过 Nginx 代理的 /ws/ 路径连接
+    const portSuffix = port && port !== '80' && port !== '443' ? `:${port}` : '';
+    return `${wsProtocol}//${hostname}${portSuffix}/ws`;
   }
 
   return 'ws://localhost:1234';
