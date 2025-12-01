@@ -90,7 +90,7 @@ function AppContent() {
   const setFileName = useStore((state) => state.setFileName);
   const showToast = useStore((state) => state.showToast);
   const exportOptions = useStore((state) => state.settings.exportOptions);
-  const { conflict, resolveConflict } = useCollaboration();
+  const { conflict, resolveConflict, yText, isConnected } = useCollaboration();
 
   const [isExportDialogOpen, setExportDialogOpen] = useState(false);
   const [isMergeMode, setIsMergeMode] = useState(false);
@@ -144,16 +144,25 @@ function AppContent() {
   }, [content, showToast, t]);
 
   const handleClear = useCallback(() => {
+    // 在协作模式下，需要清除 yText
+    if (isConnected && yText) {
+      yText.delete(0, yText.length);
+    }
     setContent('');
     setFileName(null);
     showToast(t('toast.cleared'), 'info');
-  }, [setContent, setFileName, showToast, t]);
+  }, [isConnected, yText, setContent, setFileName, showToast, t]);
 
   const handleLoadSample = useCallback(() => {
+    // 在协作模式下，需要更新 yText
+    if (isConnected && yText) {
+      yText.delete(0, yText.length);
+      yText.insert(0, SAMPLE_MARKDOWN);
+    }
     setContent(SAMPLE_MARKDOWN);
     setFileName(null);
     showToast(t('toast.sampleLoaded'), 'success');
-  }, [setContent, setFileName, showToast, t]);
+  }, [isConnected, yText, setContent, setFileName, showToast, t]);
 
   const handleImport = useCallback(
     (file: File) => {
@@ -173,6 +182,11 @@ function AppContent() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const fileContent = event.target?.result as string;
+        // 在协作模式下，需要更新 yText
+        if (isConnected && yText) {
+          yText.delete(0, yText.length);
+          yText.insert(0, fileContent);
+        }
         setContent(fileContent);
         setFileName(file.name);
         showToast(t('import.success', { name: file.name }), 'success');
@@ -185,7 +199,7 @@ function AppContent() {
       };
       reader.readAsText(file);
     },
-    [setContent, setFileName, showToast, t]
+    [isConnected, yText, setContent, setFileName, showToast, t]
   );
 
   const defaultExportName = getDefaultFileName(fileName, content);

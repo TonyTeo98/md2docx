@@ -105,9 +105,6 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
     roomId: string;
   } | null>(null);
 
-  // Ref to track if conflict check is complete (for text observer closure)
-  const conflictCheckedRef = useRef(false);
-
   const setConnectionStatus = useStore((state) => state.setConnectionStatus);
   const updateCollaborator = useStore((state) => state.updateCollaborator);
   const removeCollaborator = useStore((state) => state.removeCollaborator);
@@ -124,7 +121,6 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       setConflict(null);
 
       setConnectionStatus('connecting');
-      conflictCheckedRef.current = false;
 
       // Create new document
       const doc = new Y.Doc();
@@ -223,7 +219,6 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
                 });
                 // Don't connect main provider yet - wait for conflict resolution
                 conflictChecked = true;
-                conflictCheckedRef.current = true;
               } else {
                 // No conflict, connect main provider
                 connectMainProvider();
@@ -234,7 +229,6 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
           // Function to connect main WebSocket provider
           const connectMainProvider = () => {
             conflictChecked = true;
-            conflictCheckedRef.current = true;
             wsProvider = new WebsocketProvider(wsUrl, newRoomId, doc);
 
             // Set user info
@@ -297,9 +291,8 @@ export const CollaborationProvider: FC<CollaborationProviderProps> = ({
       });
 
       // Sync text changes to store (only after conflict is resolved)
-      // Use ref to avoid closure issues with conflictChecked variable
       text.observe(() => {
-        if (conflictCheckedRef.current && !pendingConflictRef.current) {
+        if (conflictChecked && !pendingConflictRef.current) {
           setContent(text.toString());
         }
       });

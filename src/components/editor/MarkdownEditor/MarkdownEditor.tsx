@@ -164,14 +164,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
 
     viewRef.current.destroy();
 
-    // Get the document content based on collaboration state
-    const docContent = isConnected && yText ? yText.toString() : content;
-
-    // Sync yText content to store when entering collaboration mode
-    if (isConnected && yText) {
-      setContent(docContent);
-    }
-
     const extensions = [
       ...baseExtensions,
       fontSizeCompartment.current.of(createFontSizeTheme(editorFontSize)),
@@ -182,7 +174,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
     ];
 
     const state = EditorState.create({
-      doc: docContent,
+      doc: isConnected && yText ? yText.toString() : content,
       extensions,
     });
 
@@ -202,7 +194,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ className }) => 
     editorFontSize,
     theme,
     content,
-    setContent,
   ]);
 
   useEffect(() => {
